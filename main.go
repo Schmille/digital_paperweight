@@ -18,6 +18,7 @@ func main() {
 	freeMem := memory.FreeMemory()
 
 	if freeMem < uint64(limit+safety) {
+		fmt.Println("Not enough memory. Starting in stream writing mode. This may take a long time...")
 		streamWrite(limit)
 	} else {
 		blockWrite(limit)
@@ -34,20 +35,33 @@ func blockWrite(limit int64) {
 }
 
 func streamWrite(limit int64) {
-	var index int64
-	buff := make([]byte, 1)
+	const chunkSize = 16
+
+	remaining := limit
+	buff := make([]byte, chunkSize)
 
 	file, err := os.Create("paperweight")
 	if err != nil {
 		exitErr(err)
 	}
 
-	for index = 0; index < limit; index++ {
+	for {
+		if remaining <= 0 {
+			break
+		}
+
+		currentChunkSize := min(remaining, int64(len(buff)))
+		if currentChunkSize != int64(len(buff)) {
+			buff = make([]byte, currentChunkSize)
+		}
+
 		rand.Read(buff)
 		_, err := file.Write(buff)
 		if err != nil {
 			exitErr(err)
 		}
+
+		remaining -= currentChunkSize
 	}
 }
 
@@ -119,4 +133,11 @@ func exitErr(err error) {
 func exitMsg(msg string) {
 	fmt.Println(msg)
 	os.Exit(1)
+}
+
+func min(x int64, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
 }
