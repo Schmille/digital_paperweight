@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/pbnjay/memory"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"strconv"
@@ -11,8 +13,27 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixMilli())
-
 	limit := getLength()
+	safety := multiplyToBytes(2, "GB")
+	freeMem := memory.FreeMemory()
+
+	if freeMem < uint64(limit+safety) {
+		streamWrite(limit)
+	} else {
+		blockWrite(limit)
+	}
+}
+
+func blockWrite(limit int64) {
+	buff := make([]byte, limit)
+	rand.Read(buff)
+	err := ioutil.WriteFile("paperweight", buff, 777)
+	if err != nil {
+		exitErr(err)
+	}
+}
+
+func streamWrite(limit int64) {
 	var index int64
 	buff := make([]byte, 1)
 
@@ -49,6 +70,10 @@ func getLength() int64 {
 	length, err := strconv.ParseInt(sizePart, 10, 64)
 	if err != nil {
 		exitLength()
+	}
+
+	if length < 0 {
+		exitMsg("input must be positive")
 	}
 
 	length = multiplyToBytes(length, unitPart)
